@@ -37,15 +37,22 @@ class Team(str, Enum):
 
 class Complaint(BaseModel):
     """What the contact-centre system sends us."""
-
-    # TODO (L1.1): id, text, channel
+    id: str = Field(min_length=1, max_length=20)
+    text: str = Field(min_length=1, max_length=4000)
+    channel: Literal["email", "chat", "branch", "phone"] = "email"
 
 
 class TriageResult(BaseModel):
     """What we send back. Code downstream routes on this, so it must be exact."""
-
-    # TODO (L1.2): model_config that rejects unknown fields
-    # TODO (L1.2): category, priority, team, summary, needs_human
+    
+    # (L1.2): model_config that rejects unknown fields
+    model_config = ConfigDict(extra="forbid")
+    # (L1.2): category, priority, team, summary, needs_human
+    category: Category
+    needs_human: bool = False
+    priority: int = Field(ge=1, le=4)
+    team: Team
+    summary: str = Field(max_length=200)
 
 
 def human_review(reason: str) -> TriageResult:
@@ -57,5 +64,7 @@ def human_review(reason: str) -> TriageResult:
 
 def parse_triage(raw: str) -> TriageResult:
     """Validate the model's raw text. Never crash, never guess: bad output goes to a human."""
-    # TODO (L1.3)
-    raise NotImplementedError("L1.3: validate `raw` with TriageResult.model_validate_json")
+    try:
+        return TriageResult.model_validate_json(raw)
+    except ValidationError as e:
+        return human_review(f"invalid model output ({e.error_count()} error(s))")

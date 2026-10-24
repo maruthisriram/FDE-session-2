@@ -20,14 +20,20 @@ FIELDS = ("request_id", "route", "status", "latency_ms", "model", "prompt_versio
 def mask(text: str) -> str:
     """EB-4418203391 -> EB-******3391"""
     # TODO (L3.1)
-    raise NotImplementedError("L3.1")
+    return ACCOUNT_RE.sub(lambda match: "EB-******" + match.group(0)[-4:], text)
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        # TODO (L3.2): build a dict with ts, level, msg, plus any FIELDS present on the record;
-        #   return it as one JSON line, passed through mask().
-        raise NotImplementedError("L3.2")
+        entry = {
+            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "level": record.levelname,
+            "msg": record.getMessage(),
+        }
+        for field in FIELDS:
+            if hasattr(record, field):
+                entry[field] = getattr(record, field)
+        return mask(json.dumps(entry, ensure_ascii=False))
 
 
 def setup_logging(stream=None, level: str = "INFO") -> logging.Logger:
